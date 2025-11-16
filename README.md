@@ -28,6 +28,7 @@ Follow these steps to set up and run the Rust NFT API:
 
 ### 1\. Start Ganache
 
+
 Launch Ganache to initiate a local Ethereum blockchain node.
 
 ### 2\. Deploy the Smart Contract
