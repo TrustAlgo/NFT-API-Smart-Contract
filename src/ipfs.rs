@@ -32,6 +32,7 @@ pub async fn file_upload(file_name: String) -> Result<Json<ApiResponse>, Infalli
 
     // Extract the file name from the path
     let file_name = path
+    
         .file_name()
         .unwrap()
         .to_str()
