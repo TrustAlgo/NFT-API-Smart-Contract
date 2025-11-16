@@ -74,6 +74,9 @@ Start the Rust NFT API server by providing the deployed smart contract's address
 
 bashCopy code
 
+
+
+
 `cargo run -- <Deployed_Smart_Contract_Address>`
 
 ### 8\. Interact with the API
