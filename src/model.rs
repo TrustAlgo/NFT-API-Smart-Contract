@@ -1,36 +1,43 @@
 use serde::{Deserialize, Serialize};
-use utoipa::Component;
+use utoipa::ToSchema;
 
-// Define the request body for minting an NFT
-#[derive(Serialize, Deserialize, Component)]
+// =========================
+// Request DTOs
+// =========================
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct MintNftRequest {
-    pub(crate) owner_address: String,
-    pub(crate) token_name: String,
-    pub(crate) token_uri: String,
-    pub(crate) file_path: String,
+    pub owner_address: String,
+    pub token_name: String,
+    pub token_uri: String,
+    pub file_path: String,
 }
 
-#[derive(Serialize, Deserialize, Component)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct TokenFileForm {
-    file: Vec<u8>,
+    pub file: Vec<u8>,
 }
 
-#[derive(Serialize, Deserialize, Component)]
-pub struct ApiResponse {
-    pub(crate) success: bool,
-    pub(crate) message: String,
-    pub(crate) token_uri: Option<String>,
+// =========================
+// Response DTOs
+// =========================
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct ApiResponse<T> {
+    pub success: bool,
+    pub message: String,
+    pub data: Option<T>,
 }
 
-#[derive(Serialize, Deserialize, Component)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct NftMetadata {
-    pub(crate) token_id: String,
-    pub(crate) owner_address: String,
-    pub(crate) token_name: String,
-    pub(crate) token_uri: String,
+    pub token_id: String,
+    pub owner_address: String,
+    pub token_name: String,
+    pub token_uri: String,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct UploadResponse {
-    token_uri: String,
+    pub token_uri: String,
 }
