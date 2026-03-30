@@ -6,91 +6,105 @@ use axum::{
 use serde_json::json;
 use thiserror::Error;
 
-// Define a custom application error type using `thiserror`
+// =========================
+// Application Error
+// =========================
+
 #[derive(Error, Debug)]
 pub enum AppError {
     #[error("Bad request: {0}")]
     BadRequest(String),
 
-    #[error("Internal server error: {0}")]
-    InternalServerError(String),
+    #[error("Internal server error")]
+    InternalServerError,
 
-    #[error("Web3 error: {0}")]
+    #[error(transparent)]
     Web3Error(#[from] web3::Error),
 
-    #[error("Serialization error: {0}")]
+    #[error(transparent)]
     SerdeError(#[from] serde_json::Error),
 
-    #[error("Internal error: {0}")]
-    GenericError(String),
-
-    #[error("Smart contract error: {0}")]
+    #[error("Not found: {0}")]
     NotFound(String),
+
+    #[error("Unexpected error: {0}")]
+    GenericError(String),
 }
 
+// Convert boxed errors into GenericError
 impl From<Box<dyn std::error::Error>> for AppError {
     fn from(err: Box<dyn std::error::Error>) -> Self {
-        AppError::GenericError(format!("An error occurred: {}", err))
+        Self::GenericError(err.to_string())
     }
 }
 
-// Implement `IntoResponse` for `AppError` to convert it into an HTTP response
-impl IntoResponse for AppError {
-    fn into_response(self) -> Response {
-        let (status, error_message) = match &self {
-            AppError::BadRequest(message) => (StatusCode::BAD_REQUEST, message.clone()),
-            AppError::InternalServerError(message) => {
-                (StatusCode::INTERNAL_SERVER_ERROR, message.clone())
-            }
-            AppError::Web3Error(message) => {
-                (StatusCode::INTERNAL_SERVER_ERROR, message.to_string())
-            }
-            AppError::SerdeError(message) => {
-                (StatusCode::INTERNAL_SERVER_ERROR, message.to_string())
-            }
-            AppError::GenericError(message) => (StatusCode::INTERNAL_SERVER_ERROR, message.clone()),
-            AppError::NotFound(message) => (StatusCode::INTERNAL_SERVER_ERROR, message.clone()),
-        };
-
-        let body = Json(json!({ "error": error_message })).into_response();
-        (status, body).into_response()
+// Centralized status code mapping
+impl AppError {
+    fn status_code(&self) -> StatusCode {
+        match self {
+            AppError::BadRequest(_) => StatusCode::BAD_REQUEST,
+            AppError::NotFound(_) => StatusCode::NOT_FOUND,
+            AppError::InternalServerError => StatusCode::INTERNAL_SERVER_ERROR,
+            AppError::Web3Error(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            AppError::SerdeError(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            AppError::GenericError(_) => StatusCode::INTERNAL_SERVER_ERROR,
+        }
     }
-}
 
-// Custom UploadError type for file upload errors
-#[derive(Error, Debug)]
-pub enum UploadError {
-    #[error("IO error: {0}")]
-    IoError(#[from] std::io::Error),
-}
-
-#[derive(Error, Debug)]
-pub enum SignatureError {
-    #[error("Hex decoding error: {0}")]
-    HexDecodeError(#[from] hex::FromHexError),
-}
-
-impl From<SignatureError> for AppError {
-    fn from(err: SignatureError) -> AppError {
-        match err {
-            SignatureError::HexDecodeError(_) => {
-                AppError::BadRequest("Invalid hex format".to_string())
-            }
+    fn message(&self) -> String {
+        match self {
+            AppError::InternalServerError => "Internal server error".to_string(),
+            _ => self.to_string(),
         }
     }
 }
 
-// Implement `IntoResponse` for `UploadError` to convert it into an HTTP response
+// Clean IntoResponse implementation
+impl IntoResponse for AppError {
+    fn into_response(self) -> Response {
+        let status = self.status_code();
+
+        let body = Json(json!({
+            "error": self.message()
+        }));
+
+        (status, body).into_response()
+    }
+}
+
+// =========================
+// Upload Error
+// =========================
+
+#[derive(Error, Debug)]
+pub enum UploadError {
+    #[error("IO error")]
+    IoError(#[from] std::io::Error),
+}
+
 impl IntoResponse for UploadError {
     fn into_response(self) -> Response {
-        let (status, error_message) = match self {
-            UploadError::IoError(_) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Internal server error".to_string(),
-            ),
-        };
+        let body = Json(json!({
+            "error": "Internal server error"
+        }));
 
-        let body = Json(json!({ "error": error_message })).into_response();
-        (status, body).into_response()
+        (StatusCode::INTERNAL_SERVER_ERROR, body).into_response()
+    }
+}
+
+// =========================
+// Signature Error
+// =========================
+
+#[derive(Error, Debug)]
+pub enum SignatureError {
+    #[error("Invalid hex format")]
+    HexDecodeError(#[from] hex::FromHexError),
+}
+
+// Convert SignatureError → AppError
+impl From<SignatureError> for AppError {
+    fn from(_: SignatureError) -> Self {
+        AppError::BadRequest("Invalid hex format".to_string())
     }
 }
